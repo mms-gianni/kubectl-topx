@@ -2,31 +2,43 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"os"
 	"time"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"github.com/spf13/cobra"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
 var (
-	namespace      = flag.String("namespace", "", "Kubernetes namespace to monitor (empty for all namespaces)")
-	refreshSeconds = flag.Int("refresh", 5, "Refresh interval in seconds")
+	namespace      string
+	refreshSeconds int
 )
 
-func main() {
-	flag.Parse()
+var rootCmd = &cobra.Command{
+	Use:   "kubectl-topx",
+	Short: "Kubernetes Resource Metrics Monitor",
+	Long:  `A terminal UI for monitoring Kubernetes pod resource metrics including CPU and memory usage, requests, and limits.`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		app := &App{
+			namespace:      namespace,
+			refreshSeconds: refreshSeconds,
+		}
+		return app.Run()
+	},
+}
 
-	app := &App{
-		namespace:      *namespace,
-		refreshSeconds: *refreshSeconds,
-	}
-	if err := app.Run(); err != nil {
+func init() {
+	rootCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to monitor (empty for all namespaces)")
+	rootCmd.Flags().IntVarP(&refreshSeconds, "refresh", "r", 5, "Refresh interval in seconds")
+}
+
+func main() {
+	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}

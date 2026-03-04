@@ -40,13 +40,19 @@ make build
 ./kubectl-topx
 
 # Monitor only a specific namespace
-./kubectl-topx -namespace=kube-system
+./kubectl-topx --namespace kube-system
+./kubectl-topx -n kube-system
 
 # Adjust refresh interval (e.g., 10 seconds)
-./kubectl-topx -refresh=10
+./kubectl-topx --refresh 10
+./kubectl-topx -r 10
 
 # Combination
-./kubectl-topx -namespace=default -refresh=3
+./kubectl-topx --namespace default --refresh 3
+./kubectl-topx -n default -r 3
+
+# Show help
+./kubectl-topx --help
 
 # Exit with 'q' or ESC
 # Manual refresh with 'r'
@@ -54,8 +60,9 @@ make build
 
 ### Command-line Flags
 
-- `-namespace` : Kubernetes namespace to monitor (empty = all namespaces)
-- `-refresh` : Refresh interval in seconds (default: 5)
+- `--namespace, -n` : Kubernetes namespace to monitor (empty = all namespaces)
+- `--refresh, -r` : Refresh interval in seconds (default: 5)
+- `--help, -h` : Show help message
 
 ### Keyboard Shortcuts
 
@@ -86,6 +93,7 @@ The tool shows the following information for each pod:
 
 The project uses:
 
+- **cobra**: Command-line interface framework
 - **tview**: Terminal UI Framework
 - **client-go**: Kubernetes Go Client
 - **metrics-client**: Kubernetes Metrics API Client
@@ -145,7 +153,7 @@ kubectl get nodes
 
 - Check if pods exist in the selected namespace
 - Verify that you have the required RBAC permissions
-- Try a different namespace with `-namespace=kube-system`
+- Try a different namespace with `--namespace kube-system` or `-n kube-system`
 
 ## Future Features
 
