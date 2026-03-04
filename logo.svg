@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <defs>
+    <style>
+      .bar { rx: 6; }
+      .green { fill: #4CAF50; }
+      .red { fill: #F44336; }
+      .bg { fill: #263238; }
+    </style>
+  </defs>
+  
+  <!-- Background Circle -->
+  <circle cx="100" cy="100" r="95" class="bg" opacity="0.1"/>
+  
+  <!-- Monitoring Bars -->
+  <!-- Bar 1 (Green) - Left -->
+  <rect x="45" y="80" width="30" height="80" class="bar green"/>
+  <rect x="45" y="70" width="30" height="8" class="bar green" opacity="0.3"/>
+  
+  <!-- Bar 2 (Red) - Center -->
+  <rect x="85" y="50" width="30" height="110" class="bar red"/>
+  <rect x="85" y="40" width="30" height="8" class="bar red" opacity="0.3"/>
+  
+  <!-- Bar 3 (Green) - Right -->
+  <rect x="125" y="90" width="30" height="70" class="bar green"/>
+  <rect x="125" y="80" width="30" height="8" class="bar green" opacity="0.3"/>
+  
+  <!-- Base Line -->
+  <line x1="40" y1="165" x2="160" y2="165" stroke="#263238" stroke-width="3" stroke-linecap="round" opacity="0.3"/>
+</svg>

@@ -1,3 +1,6 @@
+
+![kubectl-topx Logo](logo.svg)
+
 # kubectl-topx
 
 A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits, and actual usage) in real-time.
