@@ -17,6 +17,7 @@ import (
 var (
 	namespace      string
 	refreshSeconds int
+	wide           bool
 )
 
 var rootCmd = &cobra.Command{
@@ -27,6 +28,7 @@ var rootCmd = &cobra.Command{
 		app := &App{
 			namespace:      namespace,
 			refreshSeconds: refreshSeconds,
+			wide:           wide,
 		}
 		return app.Run()
 	},
@@ -35,6 +37,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to monitor (empty for all namespaces)")
 	rootCmd.Flags().IntVarP(&refreshSeconds, "refresh", "r", 5, "Refresh interval in seconds")
+	rootCmd.Flags().BoolVarP(&wide, "wide", "w", false, "Show additional columns (requests and limits)")
 }
 
 func main() {
@@ -54,6 +57,7 @@ type App struct {
 	cancel         context.CancelFunc
 	namespace      string
 	refreshSeconds int
+	wide           bool
 	lastUpdate     time.Time
 }
 
@@ -115,11 +119,20 @@ func (a *App) initTUI() {
 		SetFixed(1, 0)
 
 	// Set up header
-	headers := []string{"Pod", "CPU Request", "CPU Limit", "CPU Usage", "Memory Request", "Memory Limit", "Memory Usage"}
+	var headers []string
 	// Only show namespace column when monitoring all namespaces
 	if a.namespace == "" {
-		headers = append([]string{"Namespace"}, headers...)
+		headers = append(headers, "Namespace")
 	}
+	headers = append(headers, "Pod")
+	if a.wide {
+		headers = append(headers, "CPU Request", "CPU Limit")
+	}
+	headers = append(headers, "CPU Usage")
+	if a.wide {
+		headers = append(headers, "Memory Request", "Memory Limit")
+	}
+	headers = append(headers, "Memory Usage")
 	for col, header := range headers {
 		cell := tview.NewTableCell(header).
 			SetTextColor(tcell.ColorYellow).
@@ -238,13 +251,17 @@ func (a *App) addMetricRow(row int, metric *PodMetrics) {
 	a.table.SetCell(row, col, tview.NewTableCell(metric.PodName).SetTextColor(tcell.ColorWhite))
 	col++
 
-	// CPU Request
-	a.table.SetCell(row, col, tview.NewTableCell(metric.CPURequest).SetTextColor(tcell.ColorWhite))
-	col++
+	// CPU Request (only in wide mode)
+	if a.wide {
+		a.table.SetCell(row, col, tview.NewTableCell(metric.CPURequest).SetTextColor(tcell.ColorWhite))
+		col++
+	}
 
-	// CPU Limit
-	a.table.SetCell(row, col, tview.NewTableCell(metric.CPULimit).SetTextColor(tcell.ColorWhite))
-	col++
+	// CPU Limit (only in wide mode)
+	if a.wide {
+		a.table.SetCell(row, col, tview.NewTableCell(metric.CPULimit).SetTextColor(tcell.ColorWhite))
+		col++
+	}
 
 	// CPU Usage with bar (right-aligned to 8 characters for consistent spacing)
 	cpuBar := createProgressBar(metric.CPUUsagePercent, 20)
@@ -252,13 +269,17 @@ func (a *App) addMetricRow(row int, metric *PodMetrics) {
 	a.table.SetCell(row, col, tview.NewTableCell(cpuText).SetTextColor(getColorForUsage(metric.CPUUsagePercent)))
 	col++
 
-	// Memory Request
-	a.table.SetCell(row, col, tview.NewTableCell(metric.MemoryRequest).SetTextColor(tcell.ColorWhite))
-	col++
+	// Memory Request (only in wide mode)
+	if a.wide {
+		a.table.SetCell(row, col, tview.NewTableCell(metric.MemoryRequest).SetTextColor(tcell.ColorWhite))
+		col++
+	}
 
-	// Memory Limit
-	a.table.SetCell(row, col, tview.NewTableCell(metric.MemoryLimit).SetTextColor(tcell.ColorWhite))
-	col++
+	// Memory Limit (only in wide mode)
+	if a.wide {
+		a.table.SetCell(row, col, tview.NewTableCell(metric.MemoryLimit).SetTextColor(tcell.ColorWhite))
+		col++
+	}
 
 	// Memory Usage with bar (right-aligned to 9 characters for consistent spacing)
 	memBar := createProgressBar(metric.MemoryUsagePercent, 20)
