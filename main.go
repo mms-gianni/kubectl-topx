@@ -222,9 +222,9 @@ func (a *App) addMetricRow(row int, metric *PodMetrics) {
 	// CPU Limit
 	a.table.SetCell(row, 3, tview.NewTableCell(metric.CPULimit).SetTextColor(tcell.ColorWhite))
 
-	// CPU Usage with bar
+	// CPU Usage with bar (right-aligned to 8 characters for consistent spacing)
 	cpuBar := createProgressBar(metric.CPUUsagePercent, 20)
-	cpuText := fmt.Sprintf("%s %s", metric.CPUUsage, cpuBar)
+	cpuText := fmt.Sprintf("%8s %s", metric.CPUUsage, cpuBar)
 	a.table.SetCell(row, 4, tview.NewTableCell(cpuText).SetTextColor(getColorForUsage(metric.CPUUsagePercent)))
 
 	// Memory Request
@@ -233,9 +233,9 @@ func (a *App) addMetricRow(row int, metric *PodMetrics) {
 	// Memory Limit
 	a.table.SetCell(row, 6, tview.NewTableCell(metric.MemoryLimit).SetTextColor(tcell.ColorWhite))
 
-	// Memory Usage with bar
+	// Memory Usage with bar (right-aligned to 9 characters for consistent spacing)
 	memBar := createProgressBar(metric.MemoryUsagePercent, 20)
-	memText := fmt.Sprintf("%s %s", metric.MemoryUsage, memBar)
+	memText := fmt.Sprintf("%9s %s", metric.MemoryUsage, memBar)
 	a.table.SetCell(row, 7, tview.NewTableCell(memText).SetTextColor(getColorForUsage(metric.MemoryUsagePercent)))
 }
 
