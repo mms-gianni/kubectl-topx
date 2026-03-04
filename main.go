@@ -115,7 +115,11 @@ func (a *App) initTUI() {
 		SetFixed(1, 0)
 
 	// Set up header
-	headers := []string{"Namespace", "Pod", "CPU Request", "CPU Limit", "CPU Usage", "Memory Request", "Memory Limit", "Memory Usage"}
+	headers := []string{"Pod", "CPU Request", "CPU Limit", "CPU Usage", "Memory Request", "Memory Limit", "Memory Usage"}
+	// Only show namespace column when monitoring all namespaces
+	if a.namespace == "" {
+		headers = append([]string{"Namespace"}, headers...)
+	}
 	for col, header := range headers {
 		cell := tview.NewTableCell(header).
 			SetTextColor(tcell.ColorYellow).
@@ -222,33 +226,44 @@ func (a *App) updateMetrics() error {
 }
 
 func (a *App) addMetricRow(row int, metric *PodMetrics) {
-	// Namespace
-	a.table.SetCell(row, 0, tview.NewTableCell(metric.Namespace).SetTextColor(tcell.ColorWhite))
+	col := 0
+
+	// Namespace (only when monitoring all namespaces)
+	if a.namespace == "" {
+		a.table.SetCell(row, col, tview.NewTableCell(metric.Namespace).SetTextColor(tcell.ColorWhite))
+		col++
+	}
 
 	// Pod name
-	a.table.SetCell(row, 1, tview.NewTableCell(metric.PodName).SetTextColor(tcell.ColorWhite))
+	a.table.SetCell(row, col, tview.NewTableCell(metric.PodName).SetTextColor(tcell.ColorWhite))
+	col++
 
 	// CPU Request
-	a.table.SetCell(row, 2, tview.NewTableCell(metric.CPURequest).SetTextColor(tcell.ColorWhite))
+	a.table.SetCell(row, col, tview.NewTableCell(metric.CPURequest).SetTextColor(tcell.ColorWhite))
+	col++
 
 	// CPU Limit
-	a.table.SetCell(row, 3, tview.NewTableCell(metric.CPULimit).SetTextColor(tcell.ColorWhite))
+	a.table.SetCell(row, col, tview.NewTableCell(metric.CPULimit).SetTextColor(tcell.ColorWhite))
+	col++
 
 	// CPU Usage with bar (right-aligned to 8 characters for consistent spacing)
 	cpuBar := createProgressBar(metric.CPUUsagePercent, 20)
 	cpuText := fmt.Sprintf("%8s %s", metric.CPUUsage, cpuBar)
-	a.table.SetCell(row, 4, tview.NewTableCell(cpuText).SetTextColor(getColorForUsage(metric.CPUUsagePercent)))
+	a.table.SetCell(row, col, tview.NewTableCell(cpuText).SetTextColor(getColorForUsage(metric.CPUUsagePercent)))
+	col++
 
 	// Memory Request
-	a.table.SetCell(row, 5, tview.NewTableCell(metric.MemoryRequest).SetTextColor(tcell.ColorWhite))
+	a.table.SetCell(row, col, tview.NewTableCell(metric.MemoryRequest).SetTextColor(tcell.ColorWhite))
+	col++
 
 	// Memory Limit
-	a.table.SetCell(row, 6, tview.NewTableCell(metric.MemoryLimit).SetTextColor(tcell.ColorWhite))
+	a.table.SetCell(row, col, tview.NewTableCell(metric.MemoryLimit).SetTextColor(tcell.ColorWhite))
+	col++
 
 	// Memory Usage with bar (right-aligned to 9 characters for consistent spacing)
 	memBar := createProgressBar(metric.MemoryUsagePercent, 20)
 	memText := fmt.Sprintf("%9s %s", metric.MemoryUsage, memBar)
-	a.table.SetCell(row, 7, tview.NewTableCell(memText).SetTextColor(getColorForUsage(metric.MemoryUsagePercent)))
+	a.table.SetCell(row, col, tview.NewTableCell(memText).SetTextColor(getColorForUsage(metric.MemoryUsagePercent)))
 }
 
 func createProgressBar(percent float64, width int) string {
