@@ -16,6 +16,7 @@ import (
 
 var (
 	namespace      string
+	allNamespaces  bool
 	refreshSeconds int
 	wide           bool
 )
@@ -27,6 +28,7 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app := &App{
 			namespace:      namespace,
+			allNamespaces:  allNamespaces,
 			refreshSeconds: refreshSeconds,
 			wide:           wide,
 		}
@@ -35,7 +37,8 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to monitor (empty for all namespaces)")
+	rootCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to monitor")
+	rootCmd.Flags().BoolVarP(&allNamespaces, "all-namespaces", "A", false, "Monitor all namespaces")
 	rootCmd.Flags().IntVarP(&refreshSeconds, "refresh", "r", 5, "Refresh interval in seconds")
 	rootCmd.Flags().BoolVarP(&wide, "wide", "w", false, "Show additional columns (requests and limits)")
 }
@@ -56,6 +59,7 @@ type App struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	namespace      string
+	allNamespaces  bool
 	refreshSeconds int
 	wide           bool
 	lastUpdate     time.Time
@@ -96,6 +100,27 @@ func (a *App) initKubeClients() error {
 		return fmt.Errorf("failed to load kubeconfig: %w", err)
 	}
 
+	// Resolve namespace: use all namespaces if -A flag is set,
+	// otherwise use specified namespace or current namespace from kubeconfig
+	if a.allNamespaces {
+		a.namespace = ""
+	} else if a.namespace == "" {
+		// Get current namespace from kubeconfig
+		rawConfig, err := kubeConfig.RawConfig()
+		if err != nil {
+			return fmt.Errorf("failed to load kubeconfig: %w", err)
+		}
+		if rawConfig.Contexts[rawConfig.CurrentContext] != nil {
+			if ns := rawConfig.Contexts[rawConfig.CurrentContext].Namespace; ns != "" {
+				a.namespace = ns
+			} else {
+				a.namespace = "default"
+			}
+		} else {
+			a.namespace = "default"
+		}
+	}
+
 	// Create Kubernetes clientset
 	a.kubeClient, err = kubernetes.NewForConfig(config)
 	if err != nil {
@@ -121,7 +146,7 @@ func (a *App) initTUI() {
 	// Set up header
 	var headers []string
 	// Only show namespace column when monitoring all namespaces
-	if a.namespace == "" {
+	if a.allNamespaces {
 		headers = append(headers, "Namespace")
 	}
 	headers = append(headers, "Pod")
@@ -205,8 +230,10 @@ func (a *App) autoRefresh() {
 }
 
 func (a *App) updateStatusBar() {
-	namespaceInfo := "all namespaces"
-	if a.namespace != "" {
+	var namespaceInfo string
+	if a.allNamespaces {
+		namespaceInfo = "all namespaces"
+	} else {
 		namespaceInfo = fmt.Sprintf("namespace: %s", a.namespace)
 	}
 
@@ -219,7 +246,12 @@ func (a *App) updateStatusBar() {
 }
 
 func (a *App) updateMetrics() error {
-	metrics, err := collectMetrics(a.kubeClient, a.metricsClient, a.namespace)
+	// Use empty string for all namespaces, otherwise use the resolved namespace
+	ns := a.namespace
+	if a.allNamespaces {
+		ns = ""
+	}
+	metrics, err := collectMetrics(a.kubeClient, a.metricsClient, ns)
 	if err != nil {
 		return err
 	}
@@ -246,7 +278,7 @@ func (a *App) addMetricRow(row int, metric *PodMetrics) {
 	col := 0
 
 	// Namespace (only when monitoring all namespaces)
-	if a.namespace == "" {
+	if a.allNamespaces {
 		a.table.SetCell(row, col, tview.NewTableCell(metric.Namespace).SetTextColor(tcell.ColorWhite))
 		col++
 	}
