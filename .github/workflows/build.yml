@@ -34,3 +34,9 @@ jobs:
         args: release --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update new version in krew-index
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: rajatjindal/krew-release-bot@v0.0.51
+      with:
+        krew_template_file: .krew.yaml
