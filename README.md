@@ -24,7 +24,7 @@ A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits,
 
 ### Download from Release Page
 
-1. Go to the [Releases page](https://github.com/YOUR_USERNAME/kubectl-topx/releases)
+1. Go to the [Releases page](https://github.com/mms-gianni/kubectl-topx/releases)
 2. Download the latest release for your platform:
    - **Linux**: `kubectl-topx-linux-amd64`
    - **macOS (Intel)**: `kubectl-topx-darwin-amd64`
