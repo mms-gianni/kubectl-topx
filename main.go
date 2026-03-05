@@ -19,7 +19,16 @@ var (
 	allNamespaces  bool
 	refreshSeconds int
 	wide           bool
+	showHistory    bool
 )
+
+type HistoricalMetric struct {
+	Timestamp  time.Time
+	CPUUsage   string
+	CPUPercent float64
+	MemUsage   string
+	MemPercent float64
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "kubectl-topx",
@@ -31,6 +40,9 @@ var rootCmd = &cobra.Command{
 			allNamespaces:  allNamespaces,
 			refreshSeconds: refreshSeconds,
 			wide:           wide,
+			showHistory:    showHistory,
+			metricsHistory: make(map[string][]*HistoricalMetric),
+			currentMetrics: make(map[string]*PodMetrics),
 		}
 		return app.Run()
 	},
@@ -41,6 +53,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&allNamespaces, "all-namespaces", "A", false, "Monitor all namespaces")
 	rootCmd.Flags().IntVarP(&refreshSeconds, "refresh", "r", 5, "Refresh interval in seconds")
 	rootCmd.Flags().BoolVarP(&wide, "wide", "w", false, "Show additional columns (requests and limits)")
+	rootCmd.Flags().BoolVarP(&showHistory, "history", "t", false, "Show historical metrics histogram")
 }
 
 func main() {
@@ -55,6 +68,10 @@ type App struct {
 	metricsClient  *versioned.Clientset
 	tviewApp       *tview.Application
 	table          *tview.Table
+	cpuHistoryView *tview.TextView
+	memHistoryView *tview.TextView
+	historyFlex    *tview.Flex
+	mainFlex       *tview.Flex
 	statusBar      *tview.TextView
 	ctx            context.Context
 	cancel         context.CancelFunc
@@ -62,7 +79,12 @@ type App struct {
 	allNamespaces  bool
 	refreshSeconds int
 	wide           bool
+	showHistory    bool
 	lastUpdate     time.Time
+	selectedPodKey string
+	metricsHistory map[string][]*HistoricalMetric
+	currentMetrics map[string]*PodMetrics
+	maxHistorySize int
 }
 
 func (a *App) Run() error {
@@ -137,6 +159,7 @@ func (a *App) initKubeClients() error {
 }
 
 func (a *App) initTUI() {
+	a.maxHistorySize = 40
 	a.tviewApp = tview.NewApplication()
 	a.table = tview.NewTable().
 		SetBorders(false).
@@ -170,8 +193,25 @@ func (a *App) initTUI() {
 	// Create title
 	title := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
-		SetText("[yellow]Kubernetes Resource Metrics Monitor[-]\nPress [green]'q'[-] to quit | Press [green]'r'[-] to refresh | Press [green]'w'[-] to toggle columns | [green]Arrow keys/PgUp/PgDn[-] to scroll").
+		SetText("[yellow]Kubernetes Resource Metrics Monitor[-]\nPress [green]'q'[-] to quit | Press [green]'r'[-] to refresh | Press [green]'w'[-] to toggle columns | Press [green]'t'[-] to toggle history | [green]Arrow keys/PgUp/PgDn[-] to scroll").
 		SetDynamicColors(true)
+
+	// Create history views for selected pod (side by side)
+	a.cpuHistoryView = tview.NewTextView().
+		SetTextAlign(tview.AlignLeft).
+		SetDynamicColors(true).
+		SetText("[gray]CPU History[-]")
+
+	a.memHistoryView = tview.NewTextView().
+		SetTextAlign(tview.AlignLeft).
+		SetDynamicColors(true).
+		SetText("[gray]Memory History[-]")
+
+	// Create horizontal flex for history views
+	a.historyFlex = tview.NewFlex().
+		SetDirection(tview.FlexColumn).
+		AddItem(a.cpuHistoryView, 0, 1, false).
+		AddItem(a.memHistoryView, 0, 1, false)
 
 	// Create status bar
 	a.statusBar = tview.NewTextView().
@@ -179,10 +219,22 @@ func (a *App) initTUI() {
 		SetDynamicColors(true)
 	a.updateStatusBar()
 
-	flex := tview.NewFlex().
+	// Add selection changed handler
+	a.table.SetSelectionChangedFunc(func(row, col int) {
+		if row > 0 { // Skip header row
+			a.onPodSelectionChanged(row)
+		}
+	})
+
+	a.mainFlex = tview.NewFlex().
 		SetDirection(tview.FlexRow).
-		AddItem(title, 3, 0, false).
-		AddItem(a.table, 0, 1, true).
+		AddItem(title, 3, 0, false)
+	
+	if a.showHistory {
+		a.mainFlex.AddItem(a.historyFlex, 8, 0, false)
+	}
+	
+	a.mainFlex.AddItem(a.table, 0, 1, true).
 		AddItem(a.statusBar, 1, 0, false)
 
 	// Set up key bindings
@@ -202,6 +254,11 @@ func (a *App) initTUI() {
 				a.toggleWide()
 			})
 			return nil
+		case 't':
+			go a.tviewApp.QueueUpdateDraw(func() {
+				a.toggleHistory()
+			})
+			return nil
 		}
 		switch event.Key() {
 		case tcell.KeyEscape:
@@ -215,7 +272,7 @@ func (a *App) initTUI() {
 		return event
 	})
 
-	a.tviewApp.SetRoot(flex, true)
+	a.tviewApp.SetRoot(a.mainFlex, true)
 }
 
 func (a *App) autoRefresh() {
@@ -264,6 +321,32 @@ func (a *App) updateMetrics() error {
 	a.lastUpdate = time.Now()
 	a.updateStatusBar()
 
+	// Store current metrics and update history
+	for _, metric := range metrics {
+		podKey := fmt.Sprintf("%s/%s", metric.Namespace, metric.PodName)
+		a.currentMetrics[podKey] = metric
+
+		// Add to history
+		histEntry := &HistoricalMetric{
+			Timestamp:  a.lastUpdate,
+			CPUUsage:   metric.CPUUsage,
+			CPUPercent: metric.CPUUsagePercent,
+			MemUsage:   metric.MemoryUsage,
+			MemPercent: metric.MemoryUsagePercent,
+		}
+
+		if _, exists := a.metricsHistory[podKey]; !exists {
+			a.metricsHistory[podKey] = make([]*HistoricalMetric, 0, a.maxHistorySize)
+		}
+
+		a.metricsHistory[podKey] = append(a.metricsHistory[podKey], histEntry)
+
+		// Limit history size
+		if len(a.metricsHistory[podKey]) > a.maxHistorySize {
+			a.metricsHistory[podKey] = a.metricsHistory[podKey][1:]
+		}
+	}
+
 	// Clear existing rows (keep header)
 	for i := a.table.GetRowCount() - 1; i > 0; i-- {
 		a.table.RemoveRow(i)
@@ -274,6 +357,11 @@ func (a *App) updateMetrics() error {
 	for _, metric := range metrics {
 		a.addMetricRow(row, metric)
 		row++
+	}
+
+	// Update history view for selected pod if any
+	if a.selectedPodKey != "" {
+		a.updateHistoryView()
 	}
 
 	return nil
@@ -370,6 +458,37 @@ func (a *App) toggleWide() {
 	a.rebuildTable()
 }
 
+func (a *App) toggleHistory() {
+	// Toggle the history flag
+	a.showHistory = !a.showHistory
+
+	// Rebuild the UI layout
+	a.rebuildUI()
+}
+
+func (a *App) rebuildUI() {
+	// Clear the main flex
+	a.mainFlex.Clear()
+
+	// Create title
+	title := tview.NewTextView().
+		SetTextAlign(tview.AlignCenter).
+		SetText("[yellow]Kubernetes Resource Metrics Monitor[-]\nPress [green]'q'[-] to quit | Press [green]'r'[-] to refresh | Press [green]'w'[-] to toggle columns | Press [green]'t'[-] to toggle history | [green]Arrow keys/PgUp/PgDn[-] to scroll").
+		SetDynamicColors(true)
+
+	// Add title
+	a.mainFlex.AddItem(title, 3, 0, false)
+
+	// Add history view if enabled
+	if a.showHistory {
+		a.mainFlex.AddItem(a.historyFlex, 8, 0, false)
+	}
+
+	// Add table and status bar
+	a.mainFlex.AddItem(a.table, 0, 1, true)
+	a.mainFlex.AddItem(a.statusBar, 1, 0, false)
+}
+
 func (a *App) rebuildTable() {
 	// Clear the table completely
 	for i := a.table.GetRowCount() - 1; i >= 0; i-- {
@@ -402,4 +521,138 @@ func (a *App) rebuildTable() {
 
 	// Refresh data
 	a.updateMetrics()
+}
+
+func (a *App) onPodSelectionChanged(row int) {
+	// Get pod info from the selected row
+	colOffset := 0
+	if a.allNamespaces {
+		colOffset = 1
+	}
+
+	var namespace, podName string
+	if a.allNamespaces && a.table.GetCell(row, 0) != nil {
+		namespace = a.table.GetCell(row, 0).Text
+		if a.table.GetCell(row, 1) != nil {
+			podName = a.table.GetCell(row, 1).Text
+		}
+	} else {
+		namespace = a.namespace
+		if a.table.GetCell(row, colOffset) != nil {
+			podName = a.table.GetCell(row, colOffset).Text
+		}
+	}
+
+	if podName == "" {
+		return
+	}
+
+	a.selectedPodKey = fmt.Sprintf("%s/%s", namespace, podName)
+	a.updateHistoryView()
+}
+
+func (a *App) updateHistoryView() {
+	history, exists := a.metricsHistory[a.selectedPodKey]
+	if !exists || len(history) == 0 {
+		noDataMsg := "[yellow]Select a pod to view history[-]"
+		a.cpuHistoryView.SetText(noDataMsg)
+		a.memHistoryView.SetText(noDataMsg)
+		return
+	}
+
+	// Show last entries for histogram
+	displayCount := 40
+	if len(history) < displayCount {
+		displayCount = len(history)
+	}
+
+	startIdx := len(history) - displayCount
+	historySlice := history[startIdx:]
+
+	// Extract CPU and Memory percentages
+	cpuValues := make([]float64, len(historySlice))
+	memValues := make([]float64, len(historySlice))
+	for i, h := range historySlice {
+		cpuValues[i] = h.CPUPercent
+		memValues[i] = h.MemPercent
+	}
+
+	// Create histograms
+	cpuHistogram := createVerticalHistogram(cpuValues, "CPU Usage", 6)
+	memHistogram := createVerticalHistogram(memValues, "Memory Usage", 6)
+
+	cpuText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, cpuHistogram)
+	memText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, memHistogram)
+
+	a.cpuHistoryView.SetText(cpuText)
+	a.memHistoryView.SetText(memText)
+}
+
+func getColorNameForUsage(percent float64) string {
+	if percent >= 90 {
+		return "red"
+	} else if percent >= 75 {
+		return "orange"
+	} else if percent >= 50 {
+		return "yellow"
+	}
+	return "green"
+}
+
+func createVerticalHistogram(values []float64, title string, height int) string {
+	if len(values) == 0 {
+		return ""
+	}
+
+	// Find max value for scaling
+	maxVal := 0.0
+	for _, v := range values {
+		if v > maxVal {
+			maxVal = v
+		}
+	}
+	if maxVal == 0 {
+		maxVal = 1
+	}
+	if maxVal < 100 {
+		maxVal = 100 // Scale to 100% max
+	}
+
+	var result string
+	result += fmt.Sprintf("[white]%s (0-100%%)[-]\n", title)
+
+	// Draw histogram from top to bottom (vertical bars)
+	for row := height; row > 0; row-- {
+		threshold := (float64(row) / float64(height)) * maxVal
+
+		// Add scale on the left (fixed width: 6 chars)
+		if row == height {
+			result += fmt.Sprintf("[gray]%3.0f%%[-]  ", maxVal)
+		} else if row == height/2 {
+			result += fmt.Sprintf("[gray]%3.0f%%[-]  ", maxVal/2)
+		} else if row == 1 {
+			result += "[gray]  0%[-]  "
+		} else {
+			result += "      "
+		}
+
+		for col := 0; col < len(values); col++ {
+			val := values[col]
+			if val >= threshold {
+				color := getColorNameForUsage(val)
+				result += fmt.Sprintf("[%s]█[-] ", color)
+			} else {
+				result += "  "
+			}
+		}
+		result += "\n"
+	}
+
+	// Add baseline
+	result += "      "
+	for i := 0; i < len(values); i++ {
+		result += "▁ "
+	}
+
+	return result
 }

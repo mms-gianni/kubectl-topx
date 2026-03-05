@@ -13,6 +13,7 @@ A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits,
 - ✅ Live updates
 - ✅ Progress bars for visual representation
 - ✅ Color-coded output based on usage level
+- ✅ Historical metrics with visual histograms
 
 ## Prerequisites
 
@@ -67,13 +68,17 @@ kubectl topx -A
 kubectl topx --wide
 kubectl topx -w
 
+# Enable historical metrics histogram
+kubectl topx --history
+kubectl topx -t
+
 # Adjust refresh interval (e.g., 10 seconds)
 kubectl topx --refresh 10
 kubectl topx -r 10
 
 # Combination
-kubectl topx --namespace default --refresh 3 --wide
-kubectl topx -n default -r 3 -w
+kubectl topx --namespace default --refresh 3 --wide --history
+kubectl topx -n default -r 3 -w -t
 
 # Show help
 kubectl topx --help
@@ -87,25 +92,29 @@ kubectl topx --help
 - `--all-namespaces, -A` : Monitor all namespaces
 - `--namespace, -n` : Kubernetes namespace to monitor (empty = all namespaces)
 - `--refresh, -r` : Refresh interval in seconds (default: 5)
-- `--help, -h` : Show help message
 - `--wide, -w` : Show additional columns (e.g., Memory & CPU Requests/Limits)
+- `--history, -t` : Show historical metrics histogram (default: off)
+- `--help, -h` : Show help message
 
 ### Keyboard Shortcuts
 
 - `q` or `ESC` : Exit
 - `r` : Manual refresh
+- `w` : Toggle wide mode (show/hide requests and limits)
+- `t` : Toggle historical metrics histogram
+- `Arrow keys`, `PgUp`, `PgDn` : Navigate through pods
 
 ## Display
 
 The tool shows the following information for each pod:
 
-- **Namespace**: The pod's namespace
+- **Namespace**: The pod's namespace (shown when monitoring all namespaces)
 - **Pod**: The pod name
-- **CPU Request**: Requested CPU resources
-- **CPU Limit**: CPU limit
+- **CPU Request**: Requested CPU resources (wide mode only)
+- **CPU Limit**: CPU limit (wide mode only)
 - **CPU Usage**: Current CPU usage with progress bar
-- **Memory Request**: Requested memory resources
-- **Memory Limit**: Memory limit
+- **Memory Request**: Requested memory resources (wide mode only)
+- **Memory Limit**: Memory limit (wide mode only)
 - **Memory Usage**: Current memory usage with progress bar
 
 ### Color Coding
