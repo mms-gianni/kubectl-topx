@@ -76,9 +76,11 @@ kubectl topx --help
 
 ### Command-line Flags
 
+- `--all-namespaces, -A` : Monitor all namespaces
 - `--namespace, -n` : Kubernetes namespace to monitor (empty = all namespaces)
 - `--refresh, -r` : Refresh interval in seconds (default: 5)
 - `--help, -h` : Show help message
+- `--wide, -w` : Show additional columns (e.g., Memory & CPU Requests/Limits)
 
 ### Keyboard Shortcuts
 
