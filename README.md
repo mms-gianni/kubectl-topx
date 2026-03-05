@@ -203,9 +203,3 @@ kubectl get nodes
 - Verify that you have the required RBAC permissions
 - Try a different namespace with `--namespace kube-system` or `-n kube-system`
 
-## Future Features
-
-- [ ] Sorting by different columns
-- [ ] Filtering by pod name (regex)
-- [ ] Node-based view
-- [ ] Historical data / graphs
