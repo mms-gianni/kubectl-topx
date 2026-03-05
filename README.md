@@ -1,58 +1,74 @@
 
-![kubectl-topx Logo](logo.svg)
+![kubectl-topx Logo](docs/logo.svg)
 
 # kubectl-topx
 
 A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits, and actual usage) in real-time.
 
+![Demo](docs/screenshot.png)
+
 ## Features
 
 - ✅ Shows CPU and memory requests, limits, and current usage
-- ✅ Live updates (every 5 seconds)
+- ✅ Live updates
 - ✅ Progress bars for visual representation
 - ✅ Color-coded output based on usage level
-- ✅ TUI based on [tview](https://github.com/rivo/tview)
-- ✅ Similar to [kube-capacity](https://github.com/robscott/kube-capacity)
 
 ## Prerequisites
 
-- Go 1.21 or higher
 - Access to a Kubernetes cluster (kubeconfig)
 - Metrics Server must be installed in the cluster
 
 ## Installation
 
+### Download from Release Page
+
+1. Go to the [Releases page](https://github.com/YOUR_USERNAME/kubectl-topx/releases)
+2. Download the latest release for your platform:
+   - **Linux**: `kubectl-topx-linux-amd64`
+   - **macOS (Intel)**: `kubectl-topx-darwin-amd64`
+   - **macOS (Apple Silicon)**: `kubectl-topx-darwin-arm64`
+   - **Windows**: `kubectl-topx-windows-amd64.exe`
+
+3. Make the binary executable (Linux/macOS):
 ```bash
-# Install dependencies
-go mod download
+chmod +x kubectl-topx-*
+```
 
-# Build
-go build -o kubectl-topx
+4. Move to a directory in your PATH (optional but recommended):
+```bash
+# Linux/macOS
+sudo mv kubectl-topx-* /usr/local/bin/kubectl-topx
 
-# Or with Make
-make build
+# Or for user-only installation
+mv kubectl-topx-* ~/.local/bin/kubectl-topx
+```
+
+5. Verify the installation:
+```bash
+kubectl topx --help
 ```
 
 ## Usage
 
 ```bash
 # Start metrics monitoring (all namespaces)
-./kubectl-topx
+kubectl topx
 
 # Monitor only a specific namespace
-./kubectl-topx --namespace kube-system
-./kubectl-topx -n kube-system
+kubectl topx --namespace kube-system
+kubectl topx -n kube-system
 
 # Adjust refresh interval (e.g., 10 seconds)
-./kubectl-topx --refresh 10
-./kubectl-topx -r 10
+kubectl topx --refresh 10
+kubectl topx -r 10
 
 # Combination
-./kubectl-topx --namespace default --refresh 3
-./kubectl-topx -n default -r 3
+kubectl topx --namespace default --refresh 3
+kubectl topx -n default -r 3
 
 # Show help
-./kubectl-topx --help
+kubectl topx --help
 
 # Exit with 'q' or ESC
 # Manual refresh with 'r'
@@ -114,6 +130,19 @@ make fmt
 make help  # Shows all available targets
 ```
 
+### Build
+
+```bash
+# Install dependencies
+go mod download
+
+# Build
+go build -o kubectl-topx
+
+# Or with Make
+make build
+```
+
 ## Troubleshooting
 
 ### "failed to get pod metrics"
@@ -159,8 +188,5 @@ kubectl get nodes
 
 - [ ] Sorting by different columns
 - [ ] Filtering by pod name (regex)
-- [ ] Export to CSV/JSON
-- [ ] Aggregated view per namespace
 - [ ] Node-based view
 - [ ] Historical data / graphs
-- [ ] Configurable alert thresholds
