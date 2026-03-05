@@ -115,7 +115,7 @@ func (a *App) initTUI() {
 	a.tviewApp = tview.NewApplication()
 	a.table = tview.NewTable().
 		SetBorders(false).
-		SetSelectable(false, false).
+		SetSelectable(true, false).
 		SetFixed(1, 0)
 
 	// Set up header
@@ -145,7 +145,7 @@ func (a *App) initTUI() {
 	// Create title
 	title := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
-		SetText("[yellow]Kubernetes Resource Metrics Monitor[-]\nPress [green]'q'[-] to quit | Press [green]'r'[-] to refresh now").
+		SetText("[yellow]Kubernetes Resource Metrics Monitor[-]\nPress [green]'q'[-] to quit | Press [green]'r'[-] to refresh | [green]Arrow keys/PgUp/PgDn[-] to scroll").
 		SetDynamicColors(true)
 
 	// Create status bar
@@ -157,7 +157,7 @@ func (a *App) initTUI() {
 	flex := tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(title, 3, 0, false).
-		AddItem(a.table, 0, 1, false).
+		AddItem(a.table, 0, 1, true).
 		AddItem(a.statusBar, 1, 0, false)
 
 	// Set up key bindings
@@ -173,10 +173,14 @@ func (a *App) initTUI() {
 			})
 			return nil
 		}
-		if event.Key() == tcell.KeyEscape {
+		switch event.Key() {
+		case tcell.KeyEscape:
 			a.cancel()
 			a.tviewApp.Stop()
 			return nil
+		case tcell.KeyUp, tcell.KeyDown, tcell.KeyPgUp, tcell.KeyPgDn, tcell.KeyHome, tcell.KeyEnd:
+			// Allow these keys to be handled by the table
+			return event
 		}
 		return event
 	})
