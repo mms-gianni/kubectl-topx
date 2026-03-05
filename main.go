@@ -229,11 +229,11 @@ func (a *App) initTUI() {
 	a.mainFlex = tview.NewFlex().
 		SetDirection(tview.FlexRow).
 		AddItem(title, 3, 0, false)
-	
+
 	if a.showHistory {
 		a.mainFlex.AddItem(a.historyFlex, 8, 0, false)
 	}
-	
+
 	a.mainFlex.AddItem(a.table, 0, 1, true).
 		AddItem(a.statusBar, 1, 0, false)
 
@@ -561,7 +561,7 @@ func (a *App) updateHistoryView() {
 	}
 
 	// Show last entries for histogram
-	displayCount := 40
+	displayCount := 30
 	if len(history) < displayCount {
 		displayCount = len(history)
 	}
