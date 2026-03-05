@@ -59,13 +59,21 @@ kubectl topx
 kubectl topx --namespace kube-system
 kubectl topx -n kube-system
 
+## Monitor all namespaces
+kubectl topx --all-namespaces
+kubectl topx -A
+
+# Show additional columns (requests/limits)
+kubectl topx --wide
+kubectl topx -w
+
 # Adjust refresh interval (e.g., 10 seconds)
 kubectl topx --refresh 10
 kubectl topx -r 10
 
 # Combination
-kubectl topx --namespace default --refresh 3
-kubectl topx -n default -r 3
+kubectl topx --namespace default --refresh 3 --wide
+kubectl topx -n default -r 3 -w
 
 # Show help
 kubectl topx --help

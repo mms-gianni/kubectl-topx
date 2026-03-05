@@ -170,7 +170,7 @@ func (a *App) initTUI() {
 	// Create title
 	title := tview.NewTextView().
 		SetTextAlign(tview.AlignCenter).
-		SetText("[yellow]Kubernetes Resource Metrics Monitor[-]\nPress [green]'q'[-] to quit | Press [green]'r'[-] to refresh | [green]Arrow keys/PgUp/PgDn[-] to scroll").
+		SetText("[yellow]Kubernetes Resource Metrics Monitor[-]\nPress [green]'q'[-] to quit | Press [green]'r'[-] to refresh | Press [green]'w'[-] to toggle columns | [green]Arrow keys/PgUp/PgDn[-] to scroll").
 		SetDynamicColors(true)
 
 	// Create status bar
@@ -195,6 +195,11 @@ func (a *App) initTUI() {
 		case 'r':
 			go a.tviewApp.QueueUpdateDraw(func() {
 				a.updateMetrics()
+			})
+			return nil
+		case 'w':
+			go a.tviewApp.QueueUpdateDraw(func() {
+				a.toggleWide()
 			})
 			return nil
 		}
@@ -355,4 +360,46 @@ func getColorForUsage(percent float64) tcell.Color {
 		return tcell.ColorYellow
 	}
 	return tcell.ColorGreen
+}
+
+func (a *App) toggleWide() {
+	// Toggle the wide flag
+	a.wide = !a.wide
+
+	// Rebuild the table with new headers and data
+	a.rebuildTable()
+}
+
+func (a *App) rebuildTable() {
+	// Clear the table completely
+	for i := a.table.GetRowCount() - 1; i >= 0; i-- {
+		a.table.RemoveRow(i)
+	}
+
+	// Rebuild headers
+	var headers []string
+	// Only show namespace column when monitoring all namespaces
+	if a.allNamespaces {
+		headers = append(headers, "Namespace")
+	}
+	headers = append(headers, "Pod")
+	if a.wide {
+		headers = append(headers, "CPU Request", "CPU Limit")
+	}
+	headers = append(headers, "CPU Usage")
+	if a.wide {
+		headers = append(headers, "Memory Request", "Memory Limit")
+	}
+	headers = append(headers, "Memory Usage")
+	for col, header := range headers {
+		cell := tview.NewTableCell(header).
+			SetTextColor(tcell.ColorYellow).
+			SetAlign(tview.AlignLeft).
+			SetSelectable(false).
+			SetExpansion(1)
+		a.table.SetCell(0, col, cell)
+	}
+
+	// Refresh data
+	a.updateMetrics()
 }
