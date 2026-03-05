@@ -28,15 +28,15 @@ archives:
 checksum:
   name_template: 'checksums.txt'
 
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - '^docs:'
-      - '^test:'
-
 #changelog:
-#  use: github-native
+#  sort: asc
+#    exclude:
+#  filters:
+#      - '^docs:'
+#      - '^test:'
+
+changelog:
+  use: github-native
 
 # modelines, feel free to remove those if you don't want/use them:
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
