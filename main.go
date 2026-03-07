@@ -621,9 +621,14 @@ func createVerticalTimeseries(values []float64, title string, height int) string
 	var result string
 	result += fmt.Sprintf("[white]%s (0-100%%)[-]\n", title)
 
+	// Block characters for denser visualization (from full to empty)
+	blocks := []rune{' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'}
+
 	// Draw timeseries from top to bottom (vertical bars)
 	for row := height; row > 0; row-- {
-		threshold := (float64(row) / float64(height)) * maxVal
+		rowTop := (float64(row) / float64(height)) * maxVal
+		rowBottom := (float64(row-1) / float64(height)) * maxVal
+		rowHeight := rowTop - rowBottom
 
 		// Add scale on the left (fixed width: 6 chars)
 		if row == height {
@@ -638,11 +643,32 @@ func createVerticalTimeseries(values []float64, title string, height int) string
 
 		for col := 0; col < len(values); col++ {
 			val := values[col]
-			if val >= threshold {
-				color := getColorNameForUsage(val)
-				result += fmt.Sprintf("[%s]█[-] ", color)
+			color := getColorNameForUsage(val)
+
+			// Determine which block character to use based on how much the value fills this row
+			var blockChar rune
+			if val >= rowTop {
+				// Value is at or above the top of this row - full block
+				blockChar = '█'
+			} else if val <= rowBottom {
+				// Value is below this row - empty
+				blockChar = ' '
 			} else {
+				// Value is partially within this row - calculate partial block
+				fillRatio := (val - rowBottom) / rowHeight
+				blockIndex := int(fillRatio * 8)
+				if blockIndex < 0 {
+					blockIndex = 0
+				} else if blockIndex > 8 {
+					blockIndex = 8
+				}
+				blockChar = blocks[blockIndex]
+			}
+
+			if blockChar == ' ' {
 				result += "  "
+			} else {
+				result += fmt.Sprintf("[%s]%c[-] ", color, blockChar)
 			}
 		}
 		result += "\n"
