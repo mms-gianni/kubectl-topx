@@ -64,27 +64,28 @@ func main() {
 }
 
 type App struct {
-	kubeClient     *kubernetes.Clientset
-	metricsClient  *versioned.Clientset
-	tviewApp       *tview.Application
-	table          *tview.Table
-	cpuHistoryView *tview.TextView
-	memHistoryView *tview.TextView
-	historyFlex    *tview.Flex
-	mainFlex       *tview.Flex
-	statusBar      *tview.TextView
-	ctx            context.Context
-	cancel         context.CancelFunc
-	namespace      string
-	allNamespaces  bool
-	refreshSeconds int
-	wide           bool
-	showHistory    bool
-	lastUpdate     time.Time
-	selectedPodKey string
-	metricsHistory map[string][]*HistoricalMetric
-	currentMetrics map[string]*PodMetrics
-	maxHistorySize int
+	kubeClient       *kubernetes.Clientset
+	metricsClient    *versioned.Clientset
+	tviewApp         *tview.Application
+	table            *tview.Table
+	cpuHistoryView   *tview.TextView
+	memHistoryView   *tview.TextView
+	historyFlex      *tview.Flex
+	mainFlex         *tview.Flex
+	statusBar        *tview.TextView
+	ctx              context.Context
+	cancel           context.CancelFunc
+	namespace        string
+	allNamespaces    bool
+	refreshSeconds   int
+	wide             bool
+	showHistory      bool
+	lastUpdate       time.Time
+	selectedPodKey   string
+	metricsHistory   map[string][]*HistoricalMetric
+	currentMetrics   map[string]*PodMetrics
+	maxHistorySize   int
+	historyViewWidth int
 }
 
 func (a *App) Run() error {
@@ -159,7 +160,8 @@ func (a *App) initKubeClients() error {
 }
 
 func (a *App) initTUI() {
-	a.maxHistorySize = 40
+	a.maxHistorySize = 200  // Store enough samples for even wide terminals
+	a.historyViewWidth = 50 // default width
 	a.tviewApp = tview.NewApplication()
 	a.table = tview.NewTable().
 		SetBorders(false).
@@ -206,6 +208,22 @@ func (a *App) initTUI() {
 		SetTextAlign(tview.AlignLeft).
 		SetDynamicColors(true).
 		SetText("[gray]Memory History[-]")
+
+	// Set draw func to calculate dynamic width and trigger update
+	a.cpuHistoryView.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
+		// Calculate available width (subtract scale column: 6 chars)
+		newWidth := width - 8
+		if newWidth < 10 {
+			newWidth = 30 // fallback
+		}
+		// Always update the width
+		a.historyViewWidth = newWidth
+		return x, y, width, height
+	})
+
+	a.memHistoryView.SetDrawFunc(func(screen tcell.Screen, x, y, width, height int) (int, int, int, int) {
+		return x, y, width, height
+	})
 
 	// Create horizontal flex for history views
 	a.historyFlex = tview.NewFlex().
@@ -560,8 +578,14 @@ func (a *App) updateHistoryView() {
 		return
 	}
 
+	// Calculate width based on view dimensions (use default if not yet calculated)
+	maxDisplayCount := a.historyViewWidth
+	if maxDisplayCount <= 0 {
+		maxDisplayCount = 30 // fallback default
+	}
+
 	// Show last entries for timeseries
-	displayCount := 30
+	displayCount := maxDisplayCount
 	if len(history) < displayCount {
 		displayCount = len(history)
 	}
@@ -577,15 +601,19 @@ func (a *App) updateHistoryView() {
 		memValues[i] = h.MemPercent
 	}
 
-	// Create timeseries
-	cpuTimeseries := createVerticalTimeseries(cpuValues, "CPU Usage", 6)
-	memTimeseries := createVerticalTimeseries(memValues, "Memory Usage", 6)
+	// Create timeseries with fixed width for consistent baseline
+	cpuTimeseries := createVerticalTimeseries(cpuValues, "CPU Usage", 6, maxDisplayCount)
+	memTimeseries := createVerticalTimeseries(memValues, "Memory Usage", 6, maxDisplayCount)
 
-	cpuText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, cpuTimeseries)
-	memText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, memTimeseries)
+	/*
+		cpuText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, cpuTimeseries)
+		memText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, memTimeseries)
 
-	a.cpuHistoryView.SetText(cpuText)
-	a.memHistoryView.SetText(memText)
+		a.cpuHistoryView.SetText(cpuText)
+		a.memHistoryView.SetText(memText)
+	*/
+	a.cpuHistoryView.SetText(cpuTimeseries)
+	a.memHistoryView.SetText(memTimeseries)
 }
 
 func getColorNameForUsage(percent float64) string {
@@ -599,9 +627,32 @@ func getColorNameForUsage(percent float64) string {
 	return "green"
 }
 
-func createVerticalTimeseries(values []float64, title string, height int) string {
+func createVerticalTimeseries(values []float64, title string, height int, maxWidth int) string {
 	if len(values) == 0 {
-		return ""
+		// Still show baseline even with no data
+		var result string
+		result += fmt.Sprintf("[white]%s (0-100%%)[-]\n", title)
+		for row := height; row > 0; row-- {
+			if row == height {
+				result += "[gray]100%[-]  "
+			} else if row == height/2 {
+				result += "[gray] 50%[-]  "
+			} else if row == 1 {
+				result += "[gray]  0%[-]  "
+			} else {
+				result += "      "
+			}
+			// Fill with empty space or baseline markers
+			for i := 0; i < maxWidth; i++ {
+				if row == 1 {
+					result += "[gray]▁[-]"
+				} else {
+					result += " "
+				}
+			}
+			result += "\n"
+		}
+		return result
 	}
 
 	// Find max value for scaling
@@ -641,6 +692,18 @@ func createVerticalTimeseries(values []float64, title string, height int) string
 			result += "      "
 		}
 
+		// Fill empty columns on the left (timeline grows from right)
+		emptyColumns := maxWidth - len(values)
+		for col := 0; col < emptyColumns; col++ {
+			if row == 1 {
+				// Show baseline markers for empty columns on bottom row
+				result += "[gray]▁[-]"
+			} else {
+				result += " "
+			}
+		}
+
+		// Draw columns with actual data on the right
 		for col := 0; col < len(values); col++ {
 			val := values[col]
 			color := getColorNameForUsage(val)
@@ -651,8 +714,12 @@ func createVerticalTimeseries(values []float64, title string, height int) string
 				// Value is at or above the top of this row - full block
 				blockChar = '█'
 			} else if val <= rowBottom {
-				// Value is below this row - empty
-				blockChar = ' '
+				// Value is below this row - empty (but show baseline if on bottom row and value exists)
+				if row == 1 && val > 0 {
+					blockChar = '▁'
+				} else {
+					blockChar = ' '
+				}
 			} else {
 				// Value is partially within this row - calculate partial block
 				fillRatio := (val - rowBottom) / rowHeight
@@ -666,18 +733,13 @@ func createVerticalTimeseries(values []float64, title string, height int) string
 			}
 
 			if blockChar == ' ' {
-				result += "  "
+				result += " "
 			} else {
-				result += fmt.Sprintf("[%s]%c[-] ", color, blockChar)
+				result += fmt.Sprintf("[%s]%c[-]", color, blockChar)
 			}
 		}
-		result += "\n"
-	}
 
-	// Add baseline
-	result += "      "
-	for i := 0; i < len(values); i++ {
-		result += "▁ "
+		result += "\n"
 	}
 
 	return result
