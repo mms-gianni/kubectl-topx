@@ -53,7 +53,7 @@ func init() {
 	rootCmd.Flags().BoolVarP(&allNamespaces, "all-namespaces", "A", false, "Monitor all namespaces")
 	rootCmd.Flags().IntVarP(&refreshSeconds, "refresh", "r", 5, "Refresh interval in seconds")
 	rootCmd.Flags().BoolVarP(&wide, "wide", "w", false, "Show additional columns (requests and limits)")
-	rootCmd.Flags().BoolVarP(&showHistory, "history", "t", false, "Show historical metrics histogram")
+	rootCmd.Flags().BoolVarP(&showHistory, "history", "t", false, "Show historical metrics for selected pod")
 }
 
 func main() {
@@ -560,7 +560,7 @@ func (a *App) updateHistoryView() {
 		return
 	}
 
-	// Show last entries for histogram
+	// Show last entries for timeseries
 	displayCount := 30
 	if len(history) < displayCount {
 		displayCount = len(history)
@@ -577,12 +577,12 @@ func (a *App) updateHistoryView() {
 		memValues[i] = h.MemPercent
 	}
 
-	// Create histograms
-	cpuHistogram := createVerticalHistogram(cpuValues, "CPU Usage", 6)
-	memHistogram := createVerticalHistogram(memValues, "Memory Usage", 6)
+	// Create timeseries
+	cpuTimeseries := createVerticalTimeseries(cpuValues, "CPU Usage", 6)
+	memTimeseries := createVerticalTimeseries(memValues, "Memory Usage", 6)
 
-	cpuText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, cpuHistogram)
-	memText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, memHistogram)
+	cpuText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, cpuTimeseries)
+	memText := fmt.Sprintf("[yellow]%s[-] (%d samples)\n%s", a.selectedPodKey, displayCount, memTimeseries)
 
 	a.cpuHistoryView.SetText(cpuText)
 	a.memHistoryView.SetText(memText)
@@ -599,7 +599,7 @@ func getColorNameForUsage(percent float64) string {
 	return "green"
 }
 
-func createVerticalHistogram(values []float64, title string, height int) string {
+func createVerticalTimeseries(values []float64, title string, height int) string {
 	if len(values) == 0 {
 		return ""
 	}
@@ -621,7 +621,7 @@ func createVerticalHistogram(values []float64, title string, height int) string 
 	var result string
 	result += fmt.Sprintf("[white]%s (0-100%%)[-]\n", title)
 
-	// Draw histogram from top to bottom (vertical bars)
+	// Draw timeseries from top to bottom (vertical bars)
 	for row := height; row > 0; row-- {
 		threshold := (float64(row) / float64(height)) * maxVal
 
