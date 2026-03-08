@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -6,8 +6,8 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-// createProgressBar creates a visual progress bar representation of a percentage
-func createProgressBar(percent float64, width int) string {
+// CreateProgressBar creates a visual progress bar representation of a percentage
+func CreateProgressBar(percent float64, width int) string {
 	if percent < 0 {
 		percent = 0
 	}
@@ -30,8 +30,8 @@ func createProgressBar(percent float64, width int) string {
 	return bar
 }
 
-// getColorForUsage returns an appropriate tcell.Color based on usage percentage
-func getColorForUsage(percent float64) tcell.Color {
+// GetColorForUsage returns an appropriate tcell.Color based on usage percentage
+func GetColorForUsage(percent float64) tcell.Color {
 	if percent >= 90 {
 		return tcell.ColorRed
 	} else if percent >= 75 {
@@ -42,8 +42,8 @@ func getColorForUsage(percent float64) tcell.Color {
 	return tcell.ColorGreen
 }
 
-// getColorNameForUsage returns a color name string based on usage percentage
-func getColorNameForUsage(percent float64) string {
+// GetColorNameForUsage returns a color name string based on usage percentage
+func GetColorNameForUsage(percent float64) string {
 	if percent >= 90 {
 		return "red"
 	} else if percent >= 75 {

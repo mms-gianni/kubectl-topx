@@ -1,59 +1,10 @@
-package main
+package ui
 
 import (
 	"fmt"
-	"time"
+
+	"github.com/carafagi/kubectl-topx/internal/utils"
 )
-
-// HistoricalMetric represents a point-in-time snapshot of pod metrics
-type HistoricalMetric struct {
-	Timestamp  time.Time
-	CPUUsage   string
-	CPUPercent float64
-	MemUsage   string
-	MemPercent float64
-}
-
-// updateHistoryView updates the historical metrics display for the selected pod
-func (a *App) updateHistoryView() {
-	history, exists := a.metricsHistory[a.selectedPodKey]
-	if !exists || len(history) == 0 {
-		noDataMsg := "[yellow]Select a pod to view history[-]"
-		a.cpuHistoryView.SetText(noDataMsg)
-		a.memHistoryView.SetText(noDataMsg)
-		return
-	}
-
-	// Calculate width based on view dimensions (use default if not yet calculated)
-	maxDisplayCount := a.historyViewWidth
-	if maxDisplayCount <= 0 {
-		maxDisplayCount = 30 // fallback default
-	}
-
-	// Show last entries for timeseries
-	displayCount := maxDisplayCount
-	if len(history) < displayCount {
-		displayCount = len(history)
-	}
-
-	startIdx := len(history) - displayCount
-	historySlice := history[startIdx:]
-
-	// Extract CPU and Memory percentages
-	cpuValues := make([]float64, len(historySlice))
-	memValues := make([]float64, len(historySlice))
-	for i, h := range historySlice {
-		cpuValues[i] = h.CPUPercent
-		memValues[i] = h.MemPercent
-	}
-
-	// Create timeseries with fixed width for consistent baseline
-	cpuTimeseries := createVerticalTimeseries(cpuValues, "CPU Usage", 6, maxDisplayCount)
-	memTimeseries := createVerticalTimeseries(memValues, "Memory Usage", 6, maxDisplayCount)
-
-	a.cpuHistoryView.SetText(cpuTimeseries)
-	a.memHistoryView.SetText(memTimeseries)
-}
 
 // createVerticalTimeseries creates a vertical bar chart visualization of historical metrics
 func createVerticalTimeseries(values []float64, title string, height int, maxWidth int) string {
@@ -135,7 +86,7 @@ func createVerticalTimeseries(values []float64, title string, height int, maxWid
 		// Draw columns with actual data on the right
 		for col := 0; col < len(values); col++ {
 			val := values[col]
-			color := getColorNameForUsage(val)
+			color := utils.GetColorNameForUsage(val)
 
 			// Determine which block character to use based on how much the value fills this row
 			var blockChar rune
