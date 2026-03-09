@@ -2,7 +2,7 @@
 
 A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits, and actual usage) in real-time.
 
-![Demo](docs/screenshot.png)
+![Demo](docs/screenshot-1.png)
 
 ## Features
 
@@ -17,6 +17,7 @@ A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits,
 While both tools provide a terminal-based (TUI) interface for Kubernetes observability, they serve different operational needs:
 
 - **ktop** is a comprehensive **cluster dashboard**. It provides a broad, full-stack view of the cluster, managing visualizations for Nodes, cluster-level summaries, and general component health. It acts as a general-purpose monitor for the entire infrastructure ecosystem relying on Prometheus data.
+https://github.com/vladimirvivien/ktop 
 - **topx** is a focused **usage profiler**. It narrows its scope exclusively to Pod metrics to reduce interaction friction. Unlike ktop's broad management suite, topx is designed for the specific task of rapid troubleshooting—helping developers instantly answer *"Which specific pods are consuming the most CPU or Memory right now?"* without navigating through node hierarchies.
 
 ## Prerequisites
