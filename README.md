@@ -1,5 +1,10 @@
 # kubectl-topx
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/mms-gianni/kubectl-topx)](https://goreportcard.com/report/github.com/mms-gianni/kubectl-topx)
+![GitHub License](https://img.shields.io/github/license/mms-gianni/kubectl-topx)
+![Release](https://img.shields.io/github/v/release/mms-gianni/kubectl-topx)
+![Downloads](https://img.shields.io/github/downloads/mms-gianni/kubectl-topx/total?color=green)
+
 A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits, and actual usage) in real-time.
 
 ![Demo](docs/screenshot-1.png)
