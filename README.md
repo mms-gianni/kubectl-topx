@@ -12,7 +12,7 @@ A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits,
 - Color-coded output based on usage level
 - Historical metrics with visual histograms
 
-### Comparison `kubectl topx` and `kubectl ktop`:
+#### Comparison `kubectl topx` and `kubectl ktop`:
 
 While both tools provide a terminal-based (TUI) interface for Kubernetes observability, they serve different operational needs:
 
