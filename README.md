@@ -12,10 +12,17 @@ A Kubernetes CLI tool for monitoring CPU and memory resources (requests, limits,
 - Color-coded output based on usage level
 - Historical metrics with visual histograms
 
+### Comparison `kubectl topx` and `kubectl ktop`:
+
+While both tools provide a terminal-based (TUI) interface for Kubernetes observability, they serve different operational needs:
+
+- **ktop** is a comprehensive **cluster dashboard**. It provides a broad, full-stack view of the cluster, managing visualizations for Nodes, cluster-level summaries, and general component health. It acts as a general-purpose monitor for the entire infrastructure ecosystem relying on Prometheus data.
+- **topx** is a focused **usage profiler**. It narrows its scope exclusively to Pod metrics to reduce interaction friction. Unlike ktop's broad management suite, topx is designed for the specific task of rapid troubleshooting—helping developers instantly answer *"Which specific pods are consuming the most CPU or Memory right now?"* without navigating through node hierarchies.
+
 ## Prerequisites
 
 - Access to a Kubernetes cluster (kubeconfig)
-- Metrics Server must be installed in the cluster
+- [Metrics Server](https://github.com/kubernetes-sigs/metrics-server) must be installed in the cluster
 
 ## Installation
 
