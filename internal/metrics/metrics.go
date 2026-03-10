@@ -1,8 +1,9 @@
-package main
+package metrics
 
 import (
 	"context"
 	"fmt"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -12,6 +13,7 @@ import (
 	"k8s.io/metrics/pkg/client/clientset/versioned"
 )
 
+// PodMetrics represents the metrics for a single pod
 type PodMetrics struct {
 	Namespace          string
 	PodName            string
@@ -25,17 +27,41 @@ type PodMetrics struct {
 	MemoryUsagePercent float64
 }
 
-func collectMetrics(kubeClient *kubernetes.Clientset, metricsClient *versioned.Clientset, namespace string) ([]*PodMetrics, error) {
+// HistoricalMetric represents a point-in-time snapshot of pod metrics
+type HistoricalMetric struct {
+	Timestamp  time.Time
+	CPUUsage   string
+	CPUPercent float64
+	MemUsage   string
+	MemPercent float64
+}
+
+// Collector handles metrics collection
+type Collector struct {
+	KubeClient    *kubernetes.Clientset
+	MetricsClient *versioned.Clientset
+}
+
+// NewCollector creates a new Collector instance
+func NewCollector(kubeClient *kubernetes.Clientset, metricsClient *versioned.Clientset) *Collector {
+	return &Collector{
+		KubeClient:    kubeClient,
+		MetricsClient: metricsClient,
+	}
+}
+
+// CollectMetrics collects metrics for all pods in the specified namespace
+func (c *Collector) CollectMetrics(namespace string) ([]*PodMetrics, error) {
 	ctx := context.Background()
 
 	// Get all pods
-	pods, err := kubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
+	pods, err := c.KubeClient.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list pods: %w", err)
 	}
 
 	// Get pod metrics
-	podMetricsList, err := metricsClient.MetricsV1beta1().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
+	podMetricsList, err := c.MetricsClient.MetricsV1beta1().PodMetricses(namespace).List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get pod metrics: %w", err)
 	}
@@ -83,8 +109,16 @@ func collectMetrics(kubeClient *kubernetes.Clientset, metricsClient *versioned.C
 		// Current usage from metrics
 		if podMetric != nil {
 			for _, container := range podMetric.Containers {
-				cpuUsage.Add(container.Usage[corev1.ResourceCPU])
-				memoryUsage.Add(container.Usage[corev1.ResourceMemory])
+				// Safety check for nil usage maps
+				if container.Usage == nil {
+					continue
+				}
+				if usage, ok := container.Usage[corev1.ResourceCPU]; ok {
+					cpuUsage.Add(usage)
+				}
+				if usage, ok := container.Usage[corev1.ResourceMemory]; ok {
+					memoryUsage.Add(usage)
+				}
 			}
 		}
 

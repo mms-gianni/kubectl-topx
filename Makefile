@@ -2,11 +2,11 @@
 
 # Build binary
 build:
-	go build -o kubectl-topx
+	go build -o kubectl-topx ./cmd/kubectl-topx
 
 # Build with optimizations
 build-optimized:
-	go build -ldflags="-s -w" -o kubectl-topx
+	go build -ldflags="-s -w" -o kubectl-topx ./cmd/kubectl-topx
 
 # Run the application
 run: build
