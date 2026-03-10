@@ -52,11 +52,19 @@ jobs:
       
     - name: Generate krew.yaml
       run: |
-        docker run -v "$PWD/.krew.yaml:/tmp/.krew.yaml" ghcr.io/rajatjindal/krew-release-bot:v0.0.50 krew-release-bot template --tag ${{ github.ref_name }} --template-file /tmp/.krew.yaml > krew.yaml
+        docker run -v "$PWD/.krew.yaml:/tmp/.krew.yaml" ghcr.io/rajatjindal/krew-release-bot:v0.0.50 krew-release-bot template --tag ${{ github.ref_name }} --template-file /tmp/.krew.yaml > plugins/topx.yaml
     
-    - name: Upload krew.yaml to release
+    - name: Commit and push updated topx.yaml
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add plugins/topx.yaml
+        git commit -m "Update plugins/topx.yaml to version ${{ github.ref_name }}"
+        git push
+    
+    - name: Upload topx.yaml to release
       uses: softprops/action-gh-release@v2
       with:
-        files: krew.yaml
+        files: plugins/topx.yaml
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
