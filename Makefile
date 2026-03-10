@@ -1,12 +1,20 @@
 .PHONY: build run clean install test
 
+# Version information
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+BUILD_DATE ?= $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+
+# Build variables
+LDFLAGS := -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.buildDate=$(BUILD_DATE)
+
 # Build binary
 build:
-	go build -o kubectl-topx ./cmd/kubectl-topx
+	go build -ldflags="$(LDFLAGS)" -o kubectl-topx ./cmd/kubectl-topx
 
 # Build with optimizations
 build-optimized:
-	go build -ldflags="-s -w" -o kubectl-topx ./cmd/kubectl-topx
+	go build -ldflags="$(LDFLAGS) -s -w" -o kubectl-topx ./cmd/kubectl-topx
 
 # Run the application
 run: build
