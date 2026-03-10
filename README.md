@@ -32,6 +32,15 @@ https://github.com/vladimirvivien/ktop
 
 ## Installation
 
+### Krew (Recommended)
+1. Install [Krew](https://krew.sigs.k8s.io/docs/user-guide/setup/install/)
+
+2. Install `kubectl-topx` plugin:
+```bash
+kubectl krew index add topx https://github.com/mms-gianni/kubectl-topx.git
+kubectl krew install topx/topx
+```
+
 ### Download from Release Page
 
 1. Go to the [Releases page](https://github.com/mms-gianni/kubectl-topx/releases)
