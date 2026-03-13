@@ -37,8 +37,7 @@ https://github.com/vladimirvivien/ktop
 
 2. Install `kubectl-topx` plugin:
 ```bash
-kubectl krew index add topx https://github.com/mms-gianni/kubectl-topx.git
-kubectl krew install topx/topx
+kubectl krew install topx
 ```
 
 ### Download from Release Page
