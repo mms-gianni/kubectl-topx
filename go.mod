@@ -3,13 +3,13 @@ module github.com/carafagi/kubectl-topx
 go 1.25.0
 
 require (
-	github.com/gdamore/tcell/v2 v2.13.8
+	github.com/gdamore/tcell/v2 v2.13.9
 	github.com/rivo/tview v0.42.0
 	github.com/spf13/cobra v1.10.2
-	k8s.io/api v0.35.3
-	k8s.io/apimachinery v0.35.3
-	k8s.io/client-go v0.35.3
-	k8s.io/metrics v0.35.3
+	k8s.io/api v0.35.4
+	k8s.io/apimachinery v0.35.4
+	k8s.io/client-go v0.35.4
+	k8s.io/metrics v0.35.4
 )
 
 require (
